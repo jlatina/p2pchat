@@ -2,7 +2,7 @@ import socket
 
 # Define the IP address and port number for the server
 IP = '127.0.0.1'
-PORT = 5000
+PORT = 5001
 
 # Create a socket for the server
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
