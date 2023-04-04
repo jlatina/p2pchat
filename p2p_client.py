@@ -4,12 +4,17 @@ import sqlite3
 
 conn = sqlite3.connect('p2p_chat.db')
 
+# Prompt user for IP and port of second client
+peer_ip = input("Enter IP address of other client: ")
+peer_port = int(input("Enter port of other client: "))
 
-IP = sys.argv[1]
-PORT = int(sys.argv[2])
+# Connect to other client
+peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+peer_socket.connect((peer_ip, peer_port))
 
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client_socket.connect((IP, PORT))
+# Get IP and port of current client
+my_ip = sys.argv[1]
+my_port = int(sys.argv[2])
 
 c = conn.cursor()
 
@@ -17,11 +22,11 @@ while True:
     message = input('Enter message: ')
 
     # Insert message into messages table
-    c.execute("INSERT INTO messages (sender, receiver, msg, time, isSent) VALUES (?, ?, ?, datetime('now'), ?)", (IP, PORT, message, 1))
+    c.execute("INSERT INTO messages (sender, receiver, msg, time, isSent) VALUES (?, ?, ?, datetime('now'), ?)", (my_ip, peer_port, message, 1))
     conn.commit()
 
-    # send message to server
-    client_socket.send(message.encode())
+    # send message to other client
+    peer_socket.send(message.encode())
 
-    response = client_socket.recv(1024).decode()
+    response = peer_socket.recv(1024).decode()
     print('Received:', response)
