@@ -1,4 +1,8 @@
 import socket
+import sqlite3
+
+conn = sqlite3.connect('p2p_chat.db')
+
 
 # Define the IP address and port number for the server
 IP = '127.0.0.1'

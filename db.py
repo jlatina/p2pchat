@@ -10,7 +10,7 @@ df_client = pd.DataFrame(columns=['IP', 'port', 'status'])
 df_client.to_sql('client', conn, if_exists='replace', index=False)
 
 # create the messages table
-df_messages = pd.DataFrame(columns=['from', 'to', 'msg', 'time', 'isSent'])
+df_messages = pd.DataFrame(columns=['sender', 'receiver', 'msg', 'time', 'isSent'])
 df_messages.to_sql('messages', conn, if_exists='replace', index=False)
 
 # close the connection to the database
