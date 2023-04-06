@@ -16,13 +16,8 @@ except socket.error as e:
     print(f"Error connecting to {peer_ip}:{peer_port}")
     sys.exit()
 
-# Get IP and port of current client
-if len(sys.argv) < 3:
-    print("Usage: python p2p_client.py <IP address> <port>")
-    sys.exit()
-
-my_ip = sys.argv[1]
-my_port = int(sys.argv[2])
+my_ip = socket.gethostbyname(socket.gethostname())
+my_port = 5000
 
 c = conn.cursor()
 
@@ -37,6 +32,9 @@ while True:
         # send message to other client
         peer_socket.send(message.encode())
 
+        # Waits for a response from the other client, 
+        # which is assumed to be no more than 1024 bytes long, 
+        # and decodes it from bytes to a string.
         response = peer_socket.recv(1024).decode()
         print('Received:', response)
 
