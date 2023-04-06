@@ -29,9 +29,14 @@ def start_client():
 
     # Send keep alive message every KEEP_ALIVE_INTERVAL seconds
     last_keep_alive_time = time.monotonic()
+    first_entry = True
+
     while True:
         # Prompt user for message to send
-        message = input("Enter message (or type 'quit' to exit, 'list' to request a list of clients): ")
+        if not first_entry:
+            message = input("Enter message (or type 'quit' to exit, 'list' to request a list of clients): ")
+        else:
+            message = ""
 
         # Exit the loop if the user enters 'quit'
         if message == 'quit':
@@ -47,9 +52,8 @@ def start_client():
         sender = my_ip
         recipient = recipient_ip
         message = f"{message_text}"
-        server_socket.send(message.encode())
 
-        # Check if it's time to send a keep alive message
+         # Check if it's time to send a keep alive message
         current_time = time.monotonic()
         if current_time - last_keep_alive_time >= KEEP_ALIVE_INTERVAL:
             server_socket.send("keep alive".encode())
