@@ -13,28 +13,30 @@ def start_client():
     conn = sqlite3.connect('p2p_chat.db')
     c = conn.cursor()
 
-    # Prompt user for message to send
-    message = input("Enter message: ")
+    while True:
+        # Prompt user for message to send
+        message = input("Enter message (or type 'quit' to exit): ")
 
-    # Connect to server
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        server_socket.connect((peer_ip, peer_port))
-    except socket.error as e:
-        print(f"Error connecting to {peer_ip}:{peer_port}: {e}")
-        sys.exit()
+        # Exit the loop if the user enters 'quit'
+        if message == 'quit':
+            break
 
-    # Send message to server
-    server_socket.send(message.encode())
+        # Connect to server and send message
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            server_socket.connect((peer_ip, peer_port))
+        except socket.error as e:
+            print(f"Error connecting to {peer_ip}:{peer_port}: {e}")
+            continue
 
-     # Wait for up to 5 seconds for a response
-    ready = select.select([server_socket], [], [], 5)
-    if ready[0]:
-        response = server_socket.recv(1024).decode()
-        print(f"Server response: {response}")
-    else:
-        print("No response received from server")
+        server_socket.send(message.encode())
 
-    server_socket.close()
+         # Wait for up to 5 seconds for a response
+        ready = select.select([server_socket], [], [], 5)
+        if ready[0]:
+            response = server_socket.recv(1024).decode()
+            print(f"Server response: {response}")
+        else:
+            print("No response received from server")
 
-start_client()
+        server_socket.close()
