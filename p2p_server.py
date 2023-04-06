@@ -1,157 +1,96 @@
 import socket
-import sys
-import sqlite3
 import threading
+import sqlite3
 import time
 
-# Set the IP address and port of the discovery server
-discovery_server_ip = '172.20.10.5'
-discovery_server_port = 5001
+IP_ADDRESS = '172.20.10.5' # Replace with your IP address
+PORT = 5001
 
-my_ip = '172.20.10.5'
-my_port = 5001
+MESSAGE_TYPE_KEEP_ALIVE = "keep alive"
+MESSAGE_TYPE_LIST_CLIENTS = "list clients"
+MESSAGE_TYPE_CHAT = "chat"
 
-def update_client(client_address, status):
-    conn = sqlite3.connect('p2p_chat.db')
-    c = conn.cursor()
+class Server:
+    def __init__(self):
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.server_socket.bind((IP_ADDRESS, PORT))
+        self.server_socket.listen()
 
-    # Update the status of the client in the client table
-    c.execute("UPDATE client SET status = ? WHERE IP = ? AND port = ?", (status, client_address[0], client_address[1]))
-    conn.commit()
+        self.clients = {}
 
-    print(f"Updated client {client_address} status to {status}")
+        self.sync_lock = threading.Lock()
 
-def register_client(client_address):
-    conn = sqlite3.connect('p2p_chat.db')
-    c = conn.cursor()
+        conn = sqlite3.connect('p2p_chat.db')
+        c = conn.cursor()
 
-    # Check if client already exists in client table
-    c.execute("SELECT * FROM client WHERE IP = ? AND port = ?", (client_address[0], client_address[1]))
-    client = c.fetchone()
-
-    if client:
-        # If client already exists, update the status to 'online'
-        update_client(client_address, 'online')
-    else:
-        # If client doesn't exist, insert client into client table
-        c.execute("INSERT INTO client (IP, port, status) VALUES (?, ?, ?)", (client_address[0], client_address[1], 'online'))
+        c.execute('''CREATE TABLE IF NOT EXISTS messages
+                     (sender text, recipient text, message text, timestamp real)''')
         conn.commit()
+        conn.close()
 
-    # print(f"Registered new client {client_address}")
+    def start(self):
+        print(f"Server started on {IP_ADDRESS}:{PORT}")
 
-def list_online_clients():
-    conn = sqlite3.connect('p2p_chat.db')
-    c = conn.cursor()
+        while True:
+            # Wait for a new client to connect
+            client_socket, address = self.server_socket.accept()
+            print(f"New client connected: {address}")
 
-    # Retrieve the list of online clients from the client table
-    c.execute("SELECT IP, port FROM client WHERE status = 'online'")
-    clients = c.fetchall()
+            # Add the new client to the dictionary of clients
+            with self.sync_lock:
+                self.clients[client_socket] = address
 
-    # Create a list of client addresses in the format "IP:port"
-    client_list = [f"{client[0]}:{client[1]}" for client in clients]
+            # Start a new thread to handle messages from the client
+            threading.Thread(target=self.handle_client, args=(client_socket,)).start()
 
-    return ",".join(client_list)
+    def handle_client(self, client_socket):
+        conn = sqlite3.connect('p2p_chat.db')
+        c = conn.cursor()
 
-def handle_client(client_socket, client_address):
-    conn = sqlite3.connect('p2p_chat.db')
-    c = conn.cursor()
-
-    while True:
-        try:
-            # Receive message from client
-            message = client_socket.recv(1024).decode()
-            if not message:
+        while True:
+            # Wait for a message from the client
+            try:
+                message = client_socket.recv(1024).decode()
+            except socket.error as e:
+                print(f"Error receiving message from {self.clients[client_socket]}: {e}")
                 break
 
-            print(f'Received message from {client_address}: {message}')
+            # Check if the message is a keep alive message
+            if message == MESSAGE_TYPE_KEEP_ALIVE:
+                continue
 
-            
-            # Handle the request for a list of online clients
-            if message == "list":
-                response = list_online_clients()
-                client_socket.send(response.encode())
+            # Check if the message is a request for the list of clients
+            if message == MESSAGE_TYPE_LIST_CLIENTS:
+                client_list = [str(address) for address in self.clients.values()]
+                client_list_str = "\n".join(client_list)
+                client_socket.send(MESSAGE_TYPE_LIST_CLIENTS.encode())
+                client_socket.send(client_list_str.encode())
+                continue
 
-            # Insert message into messages table
-            else:
-                c.execute("INSERT INTO messages (sender, receiver, msg, time, isSent) VALUES (?, ?, ?, datetime('now'), ?)", (client_address[0], my_port, message, 1))
-                conn.commit()
+            # If the message is not a special message
+            sender_address = self.clients[client_socket]
+            with self.sync_lock:
+                for socket, address in self.clients.items():
+                    if socket != client_socket:
+                        socket.send(MESSAGE_TYPE_CHAT.encode())
+                        socket.send(f"{sender_address[0]}:{sender_address[1]}: {message}".encode())
 
-                # Send response to client
-                client_socket.send("Message received".encode())
+            # Store the message in the database
+            timestamp = time.monotonic()
+            c.execute("INSERT INTO messages VALUES (?, ?, ?, ?)",
+                      (sender_address[0], "all", message, timestamp))
+            conn.commit()
 
-        except KeyboardInterrupt:
-            print("\nKeyboard interrupt. Closing connection.")
-            client_socket.close()
-            sys.exit()
+        # Remove the client from the dictionary of clients
+        with self.sync_lock:
+            del self.clients[client_socket]
 
-        except socket.error as e:
-            print(f"\nError sending/receiving data: {e}")
-            client_socket.close()
-            sys.exit()
+        # Close the client socket
+        client_socket.close()
 
-        except sqlite3.Error as e:
-            print(f"\nError inserting data into database: {e}")
-            client_socket.close()
-            sys.exit()
+        print(f"Client {self.clients[client_socket]} disconnected")
 
-        # Break the loop if there is no message received
-        if not message:
-            break
-
-    client_socket.close()
-
-def keep_alive():
-    # Send keep alive packet to discovery server every 10 seconds
-    while True:
-        try:
-            keep_alive_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            keep_alive_socket.connect((discovery_server_ip, discovery_server_port))
-            # keep_alive_socket.send(f"Keep alive from {my_ip}:{my_port}".encode())
-            keep_alive_socket.close()
-            time.sleep(10)
-        except socket.error as e:
-            print(f"\nError sending keep alive packet to discovery server: {e}")
-            time.sleep(10)
-
-def start_server():
-    conn = sqlite3.connect('p2p_chat.db')
-    c = conn.cursor()
-
-    # Create messages table if it doesn't exist
-    c.execute("CREATE TABLE IF NOT EXISTS messages (sender TEXT, receiver TEXT, msg TEXT, time TEXT, isSent INTEGER)")
-    conn.commit()
-
-    # Listen for incoming connections
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((my_ip, my_port))
-    server_socket.listen()
-
-    print(f"Server listening on {my_ip}:{my_port}")
-
-    # Start keep alive thread
-    keep_alive_thread = threading.Thread(target=keep_alive)
-    keep_alive_thread.start()
-
-    while True:
-        try:
-            client_socket, client_address = server_socket.accept()
-            # print(f"New connection from {client_address}")
-
-            # Register the new client
-            register_client(client_address)
-
-            # Handle the new client in a separate thread
-            client_thread = threading.Thread(target=handle_client, args=(client_socket, client_address))
-            client_thread.start()
-
-        except KeyboardInterrupt:
-            print("\nKeyboard interrupt. Closing server.")
-            server_socket.close()
-            sys.exit()
-
-        except socket.error as e:
-            print(f"\nError accepting connection: {e}")
-            server_socket.close()
-            sys.exit()
-
-start_server()
+if __name__ == "__main__":
+    server = Server()
+    server.start()

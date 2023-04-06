@@ -11,6 +11,8 @@ peer_port = 5001 # Replace with server port
 
 KEEP_ALIVE_INTERVAL = 30 # in seconds
 MESSAGE_TYPE_LIST_CLIENTS = "list clients"
+MESSAGE_TYPE_CHAT = "chat"
+MESSAGE_TYPE_UPDATE = "update"
 
 
 def start_client():
@@ -38,8 +40,13 @@ def start_client():
         if message == 'list':
             server_socket.send(MESSAGE_TYPE_LIST_CLIENTS.encode())
 
-
         # Send message to server
+        recipient_ip = input("Enter recipient IP address: ")
+        message_text = input("Enter message: ")
+        message_type = MESSAGE_TYPE_CHAT
+        sender = my_ip
+        recipient = recipient_ip
+        message = f"{message_type}:{sender}:{recipient}:{message_text}"
         server_socket.send(message.encode())
 
         # Check if it's time to send a keep alive message
