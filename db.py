@@ -15,8 +15,3 @@ df_messages.to_sql('messages', conn, if_exists='replace', index=False)
 
 # close the connection to the database
 conn.close()
-
-
-
-
-
