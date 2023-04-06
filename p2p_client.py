@@ -2,10 +2,10 @@ import socket
 import sys
 import sqlite3
 
-my_ip = '172.20.10.5' # Replace with your IP address
-my_port = 5000
+my_ip = '172.20.10.7' # Replace with your IP address
+my_port = 5001
 
-peer_ip = '172.20.10.7' # Replace with server IP address
+peer_ip = '172.20.10.5' # Replace with server IP address
 peer_port = 5001 # Replace with server port
 
 def start_client():
@@ -26,5 +26,13 @@ def start_client():
     # Send message to server
     server_socket.send(message.encode())
 
-    # Receive response from server
-    response = server_socket.recv
+     # Receive response from server
+    try:
+        response = server_socket.recv(1024).decode()
+        print(f"Server response: {response}")
+    except socket.error as e:
+        print(f"Error receiving response from server: {e}")
+
+    server_socket.close()
+
+start_client()
