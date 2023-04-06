@@ -46,7 +46,7 @@ def start_client():
         message_type = MESSAGE_TYPE_CHAT
         sender = my_ip
         recipient = recipient_ip
-        message = f"{message_type}:{sender}:{recipient}:{message_text}"
+        message = f"{message_text}"
         server_socket.send(message.encode())
 
         # Check if it's time to send a keep alive message

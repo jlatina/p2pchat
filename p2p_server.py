@@ -73,7 +73,7 @@ class Server:
             with self.sync_lock:
                 for socket, address in self.clients.items():
                     if socket != client_socket:
-                        socket.send(MESSAGE_TYPE_CHAT.encode())
+                        #socket.send(MESSAGE_TYPE_CHAT.encode())
                         socket.send(message.encode())
 
             # Store the message in the database
