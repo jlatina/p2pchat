@@ -74,12 +74,13 @@ class Server:
                 for socket, address in self.clients.items():
                     if socket != client_socket:
                         socket.send(MESSAGE_TYPE_CHAT.encode())
-                        socket.send(f"{sender_address[0]}:{sender_address[1]}: {message}".encode())
+                        socket.send(message.encode())
 
             # Store the message in the database
             timestamp = time.monotonic()
-            c.execute("INSERT INTO messages VALUES (?, ?, ?, ?)",
+            c.execute("INSERT INTO messages (sender, receiver, message, timestamp) VALUES (?, ?, ?, ?)",
                       (sender_address[0], "all", message, timestamp))
+
             conn.commit()
 
         # Remove the client from the dictionary of clients
