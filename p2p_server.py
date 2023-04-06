@@ -15,6 +15,9 @@ def handle_client(client_socket, client_address):
         try:
             # Receive message from client
             message = client_socket.recv(1024).decode()
+            if not message:
+                break
+
             print(f'Received message from {client_address}: {message}')
 
             # Insert message into messages table
@@ -38,6 +41,12 @@ def handle_client(client_socket, client_address):
             print(f"\nError inserting data into database: {e}")
             client_socket.close()
             sys.exit()
+
+        # Break the loop if there is no message received
+        if not message:
+            break
+
+    client_socket.close()
 
 def start_server():
     conn = sqlite3.connect('p2p_chat.db')
@@ -71,9 +80,5 @@ def start_server():
             print(f"\nError accepting connection: {e}")
             server_socket.close()
             sys.exit()
-        except (ConnectionResetError, ConnectionAbortedError):
-            print("\nClient disconnected. Closing socket.")
-            client_socket.close()
-
 
 start_server()
