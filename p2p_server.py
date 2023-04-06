@@ -78,7 +78,7 @@ class Server:
 
             # Store the message in the database
             timestamp = time.monotonic()
-            c.execute("INSERT INTO messages (sender, receiver, message, timestamp) VALUES (?, ?, ?, ?)",
+            c.execute("INSERT INTO messages (sender, receiver, msg, time) VALUES (?, ?, ?, ?)",
                       (sender_address[0], "all", message, timestamp))
 
             conn.commit()
