@@ -4,20 +4,14 @@ import sqlite3
 
 conn = sqlite3.connect('p2p_chat.db')
 
-# Get IP and port of current client
-if len(sys.argv) < 3:
-    print("Usage: python p2p_client.py <IP address> <port>")
-    sys.exit()
-
-my_ip = sys.argv[1]
-my_port = int(sys.argv[2])
+my_ip = socket.gethostbyname(socket.gethostname())
+my_port = 5000
 
 c = conn.cursor()
 
 # Prompt user for IP and port of second client
 peer_ip = input("Enter IP address of other client: ")
-peer_port = int(input("Enter port of other client: "))
-
+peer_port = 5000
 
 # Connect to other client
 peer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -26,11 +20,6 @@ try:
 except socket.error as e:
     print(f"Error connecting to {peer_ip}:{peer_port}")
     sys.exit()
-
-# my_ip = socket.gethostbyname(socket.gethostname())
-# my_port = 5000
-
-#c = conn.cursor()
 
 while True:
     try:
