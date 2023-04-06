@@ -1,6 +1,7 @@
 import socket
 import sys
 import sqlite3
+import select
 
 my_ip = '172.20.10.7' # Replace with your IP address
 my_port = 5001
@@ -26,12 +27,13 @@ def start_client():
     # Send message to server
     server_socket.send(message.encode())
 
-     # Receive response from server
-    try:
+     # Wait for up to 5 seconds for a response
+    ready = select.select([server_socket], [], [], 5)
+    if ready[0]:
         response = server_socket.recv(1024).decode()
         print(f"Server response: {response}")
-    except socket.error as e:
-        print(f"Error receiving response from server: {e}")
+    else:
+        print("No response received from server")
 
     server_socket.close()
 
