@@ -9,6 +9,7 @@ my_port = 5001
 def handle_client(client_socket, client_address):
     conn = sqlite3.connect('p2p_chat.db')
     c = conn.cursor()
+    
 
     while True:
         try:
@@ -70,5 +71,9 @@ def start_server():
             print(f"\nError accepting connection: {e}")
             server_socket.close()
             sys.exit()
+        except (ConnectionResetError, ConnectionAbortedError):
+            print("\nClient disconnected. Closing socket.")
+            client_socket.close()
+
 
 start_server()
